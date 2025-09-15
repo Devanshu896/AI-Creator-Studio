@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Creator Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .toast-popup {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        .toast-popup.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 p-4 sm:p-8 flex flex-col items-center">
+    <div class="bg-gray-800 rounded-2xl shadow-xl w-full max-w-4xl p-6 sm:p-8">
+        <header class="text-center mb-6 sm:mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-50 mb-2">AI Creator Studio</h1>
+            <p class="text-gray-400">Your hub for AI-powered text and image generation.</p>
+            <p id="user-id" class="text-sm text-gray-500 mt-2 hidden"></p>
+        </header>
+
+        <div class="flex justify-center border-b border-gray-700 mb-6">
+            <button id="tab-text" class="tab-button px-4 py-2 text-lg font-medium rounded-t-lg transition-all duration-300 text-sky-400 border-b-2 border-sky-400">
+                Text
+            </button>
+            <button id="tab-image-gen" class="tab-button px-4 py-2 text-lg font-medium rounded-t-lg transition-all duration-300 text-gray-400 hover:text-gray-200">
+                Image Gen
+            </button>
+            <button id="tab-image-analyze" class="tab-button px-4 py-2 text-lg font-medium rounded-t-lg transition-all duration-300 text-gray-400 hover:text-gray-200">
+                Image Analyze
+            </button>
+        </div>
+
+        <div class="space-y-6">
+            <div id="input-container" class="relative">
+                <textarea id="prompt-input" class="w-full h-32 p-4 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow" placeholder="Enter your prompt here..."></textarea>
+                <div id="image-analyze-inputs" class="hidden">
+                    <input type="file" id="image-upload" accept="image/*" class="w-full text-sm text-gray-300
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-sky-500 file:text-sky-900
+                      hover:file:bg-sky-600
+                    ">
+                    <textarea id="image-prompt-input" class="w-full h-24 mt-4 p-4 text-sm bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow" placeholder="Ask a question about the image (optional)..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="generate-btn" class="flex-1 py-3 px-6 rounded-full bg-sky-600 text-white font-bold text-lg shadow-lg hover:bg-sky-700 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-600 disabled:shadow-none">
+                    Generate
+                </button>
+                <button id="surprise-me-btn" class="flex-1 py-3 px-6 rounded-full bg-purple-600 text-white font-bold text-lg shadow-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-600 disabled:shadow-none">
+                    Surprise Me
+                </button>
+                <button id="clear-btn" class="flex-1 py-3 px-6 rounded-full bg-red-500 text-white font-bold text-lg shadow-lg hover:bg-red-600 transition-all duration-300 transform hover:scale-105">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-100">Result</h2>
+            <div id="result-container" class="bg-gray-700 p-6 rounded-lg shadow-inner min-h-[150px] flex items-center justify-center border border-gray-600 relative">
+                <p id="result-placeholder" class="text-gray-400 italic text-center">Your generated content will appear here.</p>
+                <div id="loading-spinner" class="hidden text-center text-sky-400">
+                    <div class="animate-pulse">Waiting for AI...</div>
+                </div>
+                <div id="result-content" class="text-gray-100 whitespace-pre-wrap hidden"></div>
+                <img id="result-image" class="rounded-lg max-h-96 w-full object-contain hidden" alt="Generated content">
+                <button id="copy-btn" class="hidden absolute top-2 right-2 text-gray-400 hover:text-gray-200 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v14a2 2 0 002 2h2m-2-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-8m0 0a2 2 0 002-2V3a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2h2zm-2 0h2v2h-2V7z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <hr class="my-8 border-gray-700">
+
+        <!-- New Features Section -->
+        <section class="mt-8">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-6 text-gray-100 text-center">Key Features</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Text Generation Card -->
+                <div class="p-6 rounded-xl shadow-lg bg-sky-600 text-white transform transition-transform hover:scale-105">
+                    <h3 class="font-bold text-xl mb-2">Text Generation</h3>
+                    <p class="text-sm opacity-90">Create captivating stories, poems, articles, and more with our powerful text AI.</p>
+                </div>
+                <!-- Image Generation Card -->
+                <div class="p-6 rounded-xl shadow-lg bg-emerald-600 text-white transform transition-transform hover:scale-105">
+                    <h3 class="font-bold text-xl mb-2">Image Generation</h3>
+                    <p class="text-sm opacity-90">Bring your ideas to life by generating stunning images from simple text prompts.</p>
+                </div>
+                <!-- Image Analysis Card -->
+                <div class="p-6 rounded-xl shadow-lg bg-amber-600 text-white transform transition-transform hover:scale-105">
+                    <h3 class="font-bold text-xl mb-2">Image Analysis</h3>
+                    <p class="text-sm opacity-90">Upload any image and let the AI tell you what it sees, from objects to details.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="my-8 border-gray-700">
+
+        <div class="mt-8">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-100 flex justify-between items-center">
+                Generation History
+                <button id="clear-history-btn" class="text-sm text-red-500 hover:text-red-300 transition-colors">Clear History</button>
+            </h2>
+            <div id="history-container" class="space-y-4">
+                <p class="text-gray-400 italic">Your history will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="z-50 bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm mx-auto">
+            <div class="text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-100">Are you sure?</h3>
+                <div class="mt-2">
+                    <p class="text-sm text-gray-400">This will permanently delete your entire generation history. This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-center space-x-4">
+                <button id="confirm-yes" class="py-2 px-4 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors">Yes, Clear History</button>
+                <button id="confirm-no" class="py-2 px-4 rounded-full bg-gray-600 text-gray-100 font-semibold hover:bg-gray-700 transition-colors">No, Keep It</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Pop-up -->
+    <div id="toast-popup" class="fixed bottom-4 right-4 bg-gray-700 text-white px-4 py-2 rounded-lg shadow-lg toast-popup">
+        <p id="toast-message"></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, orderBy, serverTimestamp, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Global variables provided by the environment
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- State Management ---
+        let activeTab = 'text';
+        let promptValue = '';
+        let imageFile = null;
+        let isLoading = false;
+        let db = null;
+        let userId = null;
+
+        // --- DOM Elements ---
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const promptTextarea = document.getElementById('prompt-input');
+        const imageAnalyzeInputs = document.getElementById('image-analyze-inputs');
+        const imageUploadInput = document.getElementById('image-upload');
+        const imagePromptTextarea = document.getElementById('image-prompt-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const surpriseMeBtn = document.getElementById('surprise-me-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const resultContainer = document.getElementById('result-container');
+        const resultPlaceholder = document.getElementById('result-placeholder');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const resultContent = document.getElementById('result-content');
+        const resultImage = document.getElementById('result-image');
+        const copyBtn = document.getElementById('copy-btn');
+        const historyContainer = document.getElementById('history-container');
+        const userIdDisplay = document.getElementById('user-id');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+        const toastPopup = document.getElementById('toast-popup');
+        const toastMessage = document.getElementById('toast-message');
+
+        const randomPrompts = [
+            "Write a short story about a detective who can read minds.",
+            "Generate an image of a cyberpunk city with a neon-lit dragon flying over it.",
+            "Describe a recipe for a magical potion that grants flight.",
+            "Create a poem about the first time a star saw the ocean.",
+            "Generate an image of a whimsical treehouse in a forest with glowing mushrooms.",
+            "Write a dialogue between a grumpy old wizard and a polite robot.",
+            "Describe the life of a single grain of sand.",
+            "Generate an image of an ancient library filled with floating books.",
+        ];
+
+        // --- Firebase Initialization and Auth ---
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const auth = getAuth(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userIdDisplay.textContent = `User ID: ${userId}`;
+                    userIdDisplay.classList.remove('hidden');
+                    setupHistoryListener();
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Firebase Initialization Error:", error);
+        }
+
+        // --- Firestore History Listener ---
+        function setupHistoryListener() {
+            if (!db || !userId) return;
+
+            const generationsRef = collection(db, `artifacts/${appId}/users/${userId}/generations`);
+            const q = query(generationsRef, orderBy('timestamp', 'desc'));
+
+            onSnapshot(q, (snapshot) => {
+                historyContainer.innerHTML = '';
+                if (snapshot.docs.length === 0) {
+                    historyContainer.innerHTML = '<p class="text-gray-400 italic">Your history will appear here.</p>';
+                    return;
+                }
+                snapshot.docs.forEach(doc => {
+                    const item = doc.data();
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = "bg-gray-700 p-4 rounded-lg shadow-inner border border-gray-600";
+                    
+                    const timestamp = item.timestamp?.toDate()?.toLocaleString() || 'Timestamp unavailable';
+                    const type = item.type;
+
+                    let contentHtml = '';
+                    if (type === 'image') {
+                        contentHtml = `<img src="${item.content}" alt="Generated" class="rounded-lg max-h-96 w-full object-contain">`;
+                    } else {
+                        contentHtml = `<p class="text-gray-100 whitespace-pre-wrap">${item.content}</p>`;
+                    }
+                    
+                    itemDiv.innerHTML = `<p class="text-sm text-gray-400 mb-2">Type: ${type} | ${timestamp}</p>${contentHtml}`;
+                    historyContainer.appendChild(itemDiv);
+                });
+            });
+        }
+
+        // --- UI Update Functions ---
+        function showToast(message) {
+            toastMessage.textContent = message;
+            toastPopup.classList.add('show');
+            setTimeout(() => {
+                toastPopup.classList.remove('show');
+            }, 3000);
+        }
+
+        function updateUI() {
+            promptTextarea.disabled = isLoading;
+            imageUploadInput.disabled = isLoading;
+            imagePromptTextarea.disabled = isLoading;
+            generateBtn.disabled = isLoading || (activeTab !== 'image-analyze' && !promptValue) || (activeTab === 'image-analyze' && !imageFile);
+            surpriseMeBtn.disabled = isLoading;
+
+            if (isLoading) {
+                resultPlaceholder.classList.add('hidden');
+                resultContent.classList.add('hidden');
+                resultImage.classList.add('hidden');
+                copyBtn.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+            } else {
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        function clearResult() {
+            resultContent.classList.add('hidden');
+            resultContent.textContent = '';
+            resultImage.classList.add('hidden');
+            resultImage.src = '';
+            copyBtn.classList.add('hidden');
+            resultPlaceholder.classList.remove('hidden');
+        }
+
+        function displayResult(content, isImage = false) {
+            clearResult();
+            if (isImage) {
+                resultImage.src = content;
+                resultImage.classList.remove('hidden');
+            } else {
+                resultContent.textContent = content;
+                resultContent.classList.remove('hidden');
+                copyBtn.classList.remove('hidden');
+            }
+        }
+
+        // --- API Calls ---
+        async function callGeminiAPI(type, prompt, image) {
+            let apiUrl = '';
+            let payload = {};
+            let isImageResult = false;
+
+            if (type === 'text') {
+                apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+                payload = { contents: [{ parts: [{ text: prompt }] }] };
+            } else if (type === 'image-gen') {
+                apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=`;
+                payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1 } };
+                isImageResult = true;
+            } else if (type === 'image-analyze') {
+                apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(image);
+                await new Promise(resolve => reader.onloadend = resolve);
+                const base64Data = reader.result.split(',')[1];
+
+                payload = {
+                    contents: [{
+                        role: "user",
+                        parts: [
+                            { text: prompt || "What is in this image?" },
+                            { inlineData: { mimeType: image.type, data: base64Data } },
+                        ],
+                    }],
+                };
+            }
+            
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                
+                let content;
+                if (type === 'image-gen') {
+                    if (result.predictions?.[0]?.bytesBase64Encoded) {
+                        content = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    } else {
+                        content = "Could not generate image.";
+                        isImageResult = false;
+                    }
+                } else {
+                    content = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not get a response.";
+                }
+                
+                displayResult(content, isImageResult);
+                saveGeneration(type, content);
+            } catch (error) {
+                console.error(`Error with ${type} API call:`, error);
+                displayResult("An error occurred. Please try again.");
+            }
+        }
+
+        async function saveGeneration(type, content) {
+            if (!db || !userId) {
+              console.error("Firestore not initialized or user not authenticated.");
+              return;
+            }
+            try {
+              const generationsRef = collection(db, `artifacts/${appId}/users/${userId}/generations`);
+              await addDoc(generationsRef, {
+                type,
+                content: content,
+                timestamp: serverTimestamp()
+              });
+            } catch (error) {
+              console.error("Error saving generation:", error);
+            }
+        };
+
+        async function clearAllHistory() {
+            if (!db || !userId) return;
+            const generationsRef = collection(db, `artifacts/${appId}/users/${userId}/generations`);
+            const querySnapshot = await getDocs(generationsRef);
+            querySnapshot.forEach(async (docRef) => {
+                await deleteDoc(doc(generationsRef, docRef.id));
+            });
+        }
+
+        // --- Event Handlers ---
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('text-sky-400', 'border-b-2', 'border-sky-400');
+                    btn.classList.add('text-gray-400', 'hover:text-gray-200');
+                });
+                button.classList.add('text-sky-400', 'border-b-2', 'border-sky-400');
+                button.classList.remove('text-gray-400', 'hover:text-gray-200');
+
+                activeTab = button.id.replace('tab-', '');
+                if (activeTab === 'image-analyze') {
+                    imageAnalyzeInputs.classList.remove('hidden');
+                    promptTextarea.classList.add('hidden');
+                } else {
+                    imageAnalyzeInputs.classList.add('hidden');
+                    promptTextarea.classList.remove('hidden');
+                }
+                
+                clearContent();
+            });
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            isLoading = true;
+            updateUI();
+            
+            promptValue = activeTab === 'image-analyze' ? imagePromptTextarea.value : promptTextarea.value;
+            
+            await callGeminiAPI(activeTab, promptValue, imageFile);
+
+            isLoading = false;
+            updateUI();
+        });
+
+        surpriseMeBtn.addEventListener('click', () => {
+            const randomIndex = Math.floor(Math.random() * randomPrompts.length);
+            const randomPrompt = randomPrompts[randomIndex];
+            promptTextarea.value = randomPrompt;
+            promptValue = randomPrompt;
+            activeTab = 'text';
+            tabButtons.forEach(btn => {
+                btn.classList.remove('text-sky-400', 'border-b-2', 'border-sky-400');
+                btn.classList.add('text-gray-400', 'hover:text-gray-200');
+            });
+            document.getElementById('tab-text').classList.add('text-sky-400', 'border-b-2', 'border-sky-400');
+            document.getElementById('tab-text').classList.remove('text-gray-400', 'hover:text-gray-200');
+            imageAnalyzeInputs.classList.add('hidden');
+            promptTextarea.classList.remove('hidden');
+            clearResult();
+            updateUI();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            clearContent();
+        });
+        
+        copyBtn.addEventListener('click', () => {
+            const textToCopy = resultContent.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                showToast('Failed to copy!');
+            });
+        });
+
+        clearHistoryBtn.addEventListener('click', () => {
+            confirmationModal.classList.remove('hidden');
+        });
+
+        confirmYesBtn.addEventListener('click', async () => {
+            await clearAllHistory();
+            confirmationModal.classList.add('hidden');
+            showToast('History cleared!');
+        });
+
+        confirmNoBtn.addEventListener('click', () => {
+            confirmationModal.classList.add('hidden');
+        });
+
+        imageUploadInput.addEventListener('change', (e) => {
+            imageFile = e.target.files[0];
+            updateUI();
+        });
+
+        promptTextarea.addEventListener('input', (e) => {
+            promptValue = e.target.value;
+            updateUI();
+        });
+        
+        imagePromptTextarea.addEventListener('input', (e) => {
+            promptValue = e.target.value;
+            updateUI();
+        });
+
+        function clearContent() {
+            promptTextarea.value = '';
+            imagePromptTextarea.value = '';
+            promptValue = '';
+            imageFile = null;
+            clearResult();
+            updateUI();
+        }
+    </script>
+</body>
+</html>
